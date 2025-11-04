@@ -2,10 +2,10 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-    Name = "ULTIMATE FARM + REBIRTH",
+    Name = "Speed Simulator Script",
     LoadingTitle = "Loading…",
     LoadingSubtitle = "Hoops • Chests • Rebirth",
-    ConfigurationSaving = {Enabled = true, FolderName = "UltimateFarmV2"}
+    ConfigurationSaving = {Enabled = true, FolderName = "Speed Sim"}
 })
 local Tab = Window:CreateTab("Features")
 
