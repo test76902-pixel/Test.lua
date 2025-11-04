@@ -1,11 +1,11 @@
---// Load Rayfield UI
+--// ULTIMATE FARM + INFINITE RACE WIN + LIVE GUI TIMER
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-    Name = "Speed Sim",
+    Name = "ULTIMATE FARM + RACE WINNER",
     LoadingTitle = "Loading…",
-    LoadingSubtitle = "Hoops • Chests • Rebirth (FIXED)",
-    ConfigurationSaving = {Enabled = true, FolderName = "Version3"}
+    LoadingSubtitle = "Hoops • Chests • Rebirth • LIVE TIMER",
+    ConfigurationSaving = {Enabled = true, FolderName = "UltimateFarmV3"}
 })
 local Tab = Window:CreateTab("Features")
 
@@ -13,6 +13,7 @@ local Tab = Window:CreateTab("Features")
 _G.autoCycleHoops  = _G.autoCycleHoops  or false
 _G.autoCycleChests = _G.autoCycleChests or false
 _G.autoRebirth     = _G.autoRebirth     or false
+_G.autoWinRace     = _G.autoWinRace     or false
 
 --// Services
 local Players = game:GetService("Players")
@@ -20,15 +21,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 
---------------------------------------------------------------------
---// Helper: Get HumanoidRootPart
 local function getHRP()
     local char = player.Character or player.CharacterAdded:Wait()
-    return char:WaitForChild("HumanoidRootPart", 5)
+    return char:WaitForChild("HumanoidRootPart", 10)
 end
 
 --------------------------------------------------------------------
---// 1. ULTRA HOOP CYCLE (1000+ TPS)
+--// 1. ULTRA HOOPS (1000+ TPS)
 local lastHoopIndex = 0
 local hoopsList = {}
 local lastCacheTime = 0
@@ -37,7 +36,7 @@ local function refreshHoops()
     local folder = workspace:FindFirstChild("Hoops")
     if not folder then return end
     hoopsList = {}
-    for _, obj in ipairs(folder:GetDescendants()) do
+    for _, obj in ipairs(folder:GetChildren()) do
         if obj.Name == "Hoop" and obj:IsA("MeshPart") then
             table.insert(hoopsList, obj)
         end
@@ -50,9 +49,7 @@ RunService.Heartbeat:Connect(function()
     if not _G.autoCycleHoops then return end
     local hrp = getHRP()
     if not hrp or #hoopsList == 0 then return end
-
     if tick() - lastCacheTime > 5 then refreshHoops() end
-
     lastHoopIndex = (lastHoopIndex % #hoopsList) + 1
     local target = hoopsList[lastHoopIndex]
     hrp.CFrame = target.CFrame + Vector3.new(0, 5, 0)
@@ -60,7 +57,7 @@ end)
 
 --------------------------------------------------------------------
 --// 2. RANDOM CHEST (1/sec)
-spawn(function()
+task.spawn(function()
     while task.wait(1) do
         if _G.autoCycleChests then
             pcall(function()
@@ -69,7 +66,7 @@ spawn(function()
                 local container = workspace:FindFirstChild("rewardChests")
                 if not container then return end
                 local parts = {}
-                for _, v in ipairs(container:GetDescendants()) do
+                for _, v in ipairs(container:GetChildren()) do
                     if v:IsA("BasePart") then table.insert(parts, v) end
                 end
                 if #parts > 0 then
@@ -82,68 +79,120 @@ spawn(function()
 end)
 
 --------------------------------------------------------------------
---// 3. FIXED REBIRTH SYSTEM (Auto + Manual)
+--// 3. AUTO REBIRTH (uses player.level)
 local rebirthEvent = nil
+local function locateRebirthEvent()
+    local rEvents = ReplicatedStorage:FindFirstChild("rEvents")
+    if rEvents then
+        rebirthEvent = rEvents:FindFirstChild("rebirthEvent")
+    end
+end
+locateRebirthEvent()
+task.spawn(function() while task.wait(3) do locateRebirthEvent() end end)
+player.CharacterAdded:Connect(locateRebirthEvent)
 
--- Find the RemoteEvent (with retry)
-spawn(function()
+local function manualRebirth()
+    if rebirthEvent then
+        rebirthEvent:FireServer("rebirthRequest")
+        Rayfield:Notify({Title="Manual Rebirth!", Content="Fired!", Duration=3})
+    else
+        Rayfield:Notify({Title="Error", Content="No rebirthEvent!", Duration=4})
+    end
+end
+
+task.spawn(function()
     while task.wait(0.5) do
-        local rEvents = ReplicatedStorage:FindFirstChild("rEvents")
-        if rEvents then
-            rebirthEvent = rEvents:FindFirstChild("rebirthEvent")
-            if rebirthEvent then break end
-        end
+        if not _G.autoRebirth then continue end
+        pcall(function()
+            local levelVal = player:FindFirstChild("level")
+            local leaderstats = player:FindFirstChild("leaderstats")
+            local rebirthsVal = leaderstats and leaderstats:FindFirstChild("Rebirths")
+            if not levelVal or not rebirthsVal then return end
+            local level = levelVal.Value
+            local rebirths = rebirthsVal.Value
+            local required = 50 + (rebirths * 25)
+            if level >= required and rebirthEvent then
+                rebirthEvent:FireServer("rebirthRequest")
+                Rayfield:Notify({
+                    Title = "AUTO REBIRTH!",
+                    Content = string.format("Level %d ≥ %d", level, required),
+                    Duration = 5
+                })
+            end
+        end)
     end
 end)
 
--- Manual Rebirth
-local function manualRebirth()
-    if not rebirthEvent then
-        Rayfield:Notify({Title="Error", Content="rebirthEvent not found! Waiting...", Duration=4})
-        return
-    end
-    rebirthEvent:FireServer("rebirthRequest")
-    Rayfield:Notify({Title="Manual Rebirth Sent!", Content="Fired rebirthEvent", Duration=3})
-    print("[Manual] Rebirth fired!")
-end
+--------------------------------------------------------------------
+--// 4. INFINITE RACE WIN + LIVE GUI TIMER
+local raceEvent = ReplicatedStorage.rEvents:WaitForChild("raceEvent")
+local raceTimer = ReplicatedStorage:WaitForChild("raceTimer")
+local raceStarted = ReplicatedStorage:WaitForChild("raceStarted")
 
--- Auto Rebirth Check (FIXED - waits for leaderstats + event)
-spawn(function()
-    while task.wait(1) do
-        if _G.autoRebirth then
+-- Cache finish parts
+local finishParts = {}
+pcall(function()
+    finishParts[1] = workspace.raceMaps.Desert.finishPart
+    finishParts[2] = workspace.raceMaps.Grassland.finishPart
+    finishParts[3] = workspace.raceMaps.Magma.finishPart
+end)
+
+local raceFinishIndex = 1
+local raceTeleportConnection = nil
+
+-- Auto join when timer = 0
+task.spawn(function()
+    while task.wait(0.1) do
+        if _G.autoWinRace and raceTimer.Value == 0 then
             pcall(function()
-                -- Wait for leaderstats
-                local leaderstats = player:FindFirstChild("leaderstats")
-                if not leaderstats then return end
-                
-                local rebirthsVal = leaderstats:FindFirstChild("Rebirths")
-                local levelVal = leaderstats:FindFirstChild("level")
-                if not rebirthsVal or not levelVal then return end
-                
-                local rebirths = rebirthsVal.Value
-                local level = levelVal.Value
-                local required = 50 + (rebirths * 25)
-                
-                print(string.format("[Auto Rebirth] Level: %d | Required: %d | Rebirths: %d", level, required, rebirths))
-                
-                if level >= required and rebirthEvent then
-                    rebirthEvent:FireServer("rebirthRequest")
-                    Rayfield:Notify({
-                        Title="AUTO REBIRTH!",
-                        Content=string.format("Level %d >= %d (Rebirths: %d)", level, required, rebirths),
-                        Duration=5
-                    })
-                    print("[AUTO] Rebirth fired!")
-                elseif level >= required then
-                    print("[AUTO] Waiting for rebirthEvent...")
-                end
+                raceEvent:FireServer("joinRace")
+                task.wait(0.5)
             end)
         end
     end
 end)
 
+-- Infinite teleport loop during race
+raceStarted.Changed:Connect(function()
+    if not _G.autoWinRace then return end
+    if raceStarted.Value == true then
+        _G.autoCycleHoops = false
+        if raceTeleportConnection then raceTeleportConnection:Disconnect() end
+        raceTeleportConnection = RunService.Heartbeat:Connect(function()
+            if raceStarted.Value == false then
+                raceTeleportConnection:Disconnect()
+                _G.autoCycleHoops = true
+                return
+            end
+            local hrp = getHRP()
+            if hrp and #finishParts > 0 then
+                local part = finishParts[raceFinishIndex]
+                if part and part.Parent then
+                    hrp.CFrame = part.CFrame + Vector3.new(0, 5, 0)
+                end
+                raceFinishIndex = (raceFinishIndex % 3) + 1
+            end
+        end)
+    end
+end)
+
+-- LIVE RACE TIMER IN GUI (no notifications!)
+local RaceTimerLabel = Tab:CreateLabel("Race Timer: OFF")
+
+task.spawn(function()
+    while task.wait(1) do
+        if _G.autoWinRace then
+            local timeLeft = raceTimer.Value
+            local text = timeLeft > 0 and string.format("Race Timer: %d sec", timeLeft) or "Race Timer: READY!"
+            RaceTimerLabel:Set(text)
+        else
+            RaceTimerLabel:Set("Race Timer: OFF")
+        end
+    end
+end)
+
 --------------------------------------------------------------------
---// GUI Toggles + Button
+--// GUI CONTROLS
 Tab:CreateToggle({
     Name = "ULTRA Hoops (1000+ TPS)",
     CurrentValue = _G.autoCycleHoops,
@@ -166,28 +215,48 @@ Tab:CreateToggle({
 })
 
 Tab:CreateToggle({
-    Name = "AUTO REBIRTH (50 + 25×Rebirths)",
+    Name = "AUTO REBIRTH (player.level)",
     CurrentValue = _G.autoRebirth,
     Flag = "AutoRebirth",
     Callback = function(v)
         _G.autoRebirth = v
+        Rayfield:Notify({Title = v and "AUTO REBIRTH ON" or "AUTO REBIRTH OFF", Duration = 3})
+    end,
+})
+
+Tab:CreateToggle({
+    Name = "INFINITE AUTO WIN RACE",
+    CurrentValue = _G.autoWinRace,
+    Flag = "AutoWinRace",
+    Callback = function(v)
+        _G.autoWinRace = v
+        RaceTimerLabel:Set(v and "Race Timer: Loading..." or "Race Timer: OFF")
         Rayfield:Notify({
-            Title = v and "AUTO REBIRTH ON" or "AUTO REBIRTH OFF",
-            Content = v and "Checks every second!" or "",
-            Duration = 3
+            Title = v and "INFINITE RACE WIN ON" or "RACE WIN OFF",
+            Content = v and "Desert→Grass→Magma→LOOP FOREVER!" or "",
+            Duration = 4
         })
     end,
 })
 
 Tab:CreateButton({
-    Name = "🔥 MANUAL REBIRTH NOW",
+    Name = "MANUAL REBIRTH NOW",
     Callback = manualRebirth,
 })
 
+Tab:CreateButton({
+    Name = "JOIN RACE NOW",
+    Callback = function()
+        pcall(function()
+            raceEvent:FireServer("joinRace")
+            Rayfield:Notify({Title="Race Joined!", Content="Manual join!", Duration=2})
+        end)
+    end,
+})
+
 --------------------------------------------------------------------
---// Startup
 Rayfield:Notify({
-    Title = "ALL FEATURES LOADED!",
-    Content = "✓ Ultra Hoops (1000+ TPS)\n✓ Random Chests\n✓ FIXED Auto Rebirth\n✓ Manual Button",
+    Title = "ALL LOADED!",
+    Content = "Ultra Hoops\nChests\nAuto Rebirth\nINFINITE RACE WIN\nLIVE TIMER (IN GUI)",
     Duration = 8
 })
