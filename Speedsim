@@ -1,0 +1,184 @@
+--// Load Rayfield UI
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+    Name = "ULTIMATE FARM + REBIRTH",
+    LoadingTitle = "Loading…",
+    LoadingSubtitle = "Hoops • Chests • Rebirth",
+    ConfigurationSaving = {Enabled = true, FolderName = "UltimateFarmV2"}
+})
+local Tab = Window:CreateTab("Features")
+
+--// Global Toggles
+_G.autoCycleHoops  = _G.autoCycleHoops  or false
+_G.autoCycleChests = _G.autoCycleChests or false
+_G.autoRebirth     = _G.autoRebirth     or false
+
+--// Services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+
+--------------------------------------------------------------------
+--// Helper: Get HumanoidRootPart
+local function getHRP()
+    local char = player.Character or player.CharacterAdded:Wait()
+    return char:WaitForChild("HumanoidRootPart", 5)
+end
+
+--------------------------------------------------------------------
+--// 1. ULTRA HOOP CYCLE (1000+ TPS)
+local lastHoopIndex = 0
+local hoopsList = {}
+local lastCacheTime = 0
+
+local function refreshHoops()
+    local folder = workspace:FindFirstChild("Hoops")
+    if not folder then return end
+    hoopsList = {}
+    for _, obj in ipairs(folder:GetDescendants()) do
+        if obj.Name == "Hoop" and obj:IsA("MeshPart") then
+            table.insert(hoopsList, obj)
+        end
+    end
+    lastCacheTime = tick()
+end
+refreshHoops()
+
+RunService.Heartbeat:Connect(function()
+    if not _G.autoCycleHoops then return end
+    local hrp = getHRP()
+    if not hrp or #hoopsList == 0 then return end
+
+    -- Refresh cache every 5 sec
+    if tick() - lastCacheTime > 5 then refreshHoops() end
+
+    lastHoopIndex = (lastHoopIndex % #hoopsList) + 1
+    local target = hoopsList[lastHoopIndex]
+    hrp.CFrame = target.CFrame + Vector3.new(0, 5, 0)
+end)
+
+--------------------------------------------------------------------
+--// 2. RANDOM CHEST (1/sec)
+spawn(function()
+    while task.wait(1) do
+        if _G.autoCycleChests then
+            pcall(function()
+                local hrp = getHRP()
+                if not hrp then return end
+                local container = workspace:FindFirstChild("rewardChests")
+                if not container then return end
+                local parts = {}
+                for _, v in ipairs(container:GetDescendants()) do
+                    if v:IsA("BasePart") then table.insert(parts, v) end
+                end
+                if #parts > 0 then
+                    local chosen = parts[math.random(1, #parts)]
+                    hrp.CFrame = chosen.CFrame + Vector3.new(0, 5, 0)
+                end
+            end)
+        end
+    end
+end)
+
+--------------------------------------------------------------------
+--// 3. REBIRTH SYSTEM (Auto + Manual)
+
+-- Get rebirth remote (cached)
+local rebirthEvent
+local function getRebirthEvent()
+    if rebirthEvent then return rebirthEvent end
+    local rEvents = ReplicatedStorage:FindFirstChild("rEvents")
+    if not rEvents then return nil end
+    rebirthEvent = rEvents:FindFirstChild("rebirthEvent")
+    if not rebirthEvent or not rebirthEvent:IsA("RemoteEvent") then
+        rebirthEvent = nil
+    end
+    return rebirthEvent
+end
+
+-- Manual Rebirth Function
+local function manualRebirth()
+    local event = getRebirthEvent()
+    if not event then
+        Rayfield:Notify({Title="Error", Content="rebirthEvent not found!", Duration=4})
+        return
+    end
+    event:FireServer("rebirthRequest")
+    Rayfield:Notify({Title="Rebirth Sent!", Content="Manual rebirth triggered.", Duration=3})
+end
+
+-- Auto Rebirth Check
+spawn(function()
+    while task.wait(1) do
+        if _G.autoRebirth then
+            pcall(function()
+                local ls = player:FindFirstChild("leaderstats")
+                if not ls then return end
+                local r = ls:FindFirstChild("Rebirths")
+                local l = ls:FindFirstChild("level")
+                if not r or not l or not r:IsA("IntValue") or not l:IsA("IntValue") then return end
+
+                local required = 50 + (r.Value * 25)
+                if l.Value >= required then
+                    local event = getRebirthEvent()
+                    if event then
+                        event:FireServer("rebirthRequest")
+                        Rayfield:Notify({
+                            Title="Auto Rebirth!",
+                            Content=string.format("Level %d ≥ %d", l.Value, required),
+                            Duration=4
+                        })
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+--------------------------------------------------------------------
+--// GUI: Toggles + Manual Button
+
+-- Hoops Toggle
+Tab:CreateToggle({
+    Name = "ULTRA Hoops (1000+ TPS)",
+    CurrentValue = _G.autoCycleHoops,
+    Flag = "UltraHoops",
+    Callback = function(v)
+        _G.autoCycleHoops = v
+        if v then refreshHoops() end
+    end,
+})
+
+-- Chests Toggle
+Tab:CreateToggle({
+    Name = "Random Chest (1/sec)",
+    CurrentValue = _G.autoCycleChests,
+    Flag = "Chests",
+    Callback = function(v) _G.autoCycleChests = v end,
+})
+
+-- Auto Rebirth Toggle
+Tab:CreateToggle({
+    Name = "Auto Rebirth (50 + 25×R)",
+    CurrentValue = _G.autoRebirth,
+    Flag = "AutoRebirth",
+    Callback = function(v) _G.autoRebirth = v end,
+})
+
+-- MANUAL REBIRTH BUTTON
+Tab:CreateButton({
+    Name = "MANUAL REBIRTH NOW",
+    Callback = function()
+        manualRebirth()
+    end,
+})
+
+--------------------------------------------------------------------
+--// Startup
+Rayfield:Notify({
+    Title = "ULTIMATE FARM LOADED",
+    Content = "Hoops: 1000+ TPS\nManual Rebirth Button Added!",
+    Duration = 7
+})
