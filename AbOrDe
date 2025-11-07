@@ -1,0 +1,197 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "AbOrDe" .. game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name,
+   LoadingTitle = "AbOrDe",
+   LoadingSubtitle = "",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = "Rayfield",
+      FileName = "AbOrDe"
+   },
+   KeySystem = false
+})
+
+local MainTab = Window:CreateTab("Main")
+local SettingsTab = Window:CreateTab("Settings")
+
+MainTab:CreateSection("Farming Options")
+
+MainTab:CreateToggle({
+   Name = "Auto Farm NPCs & Blood",
+   CurrentValue = false,
+   Flag = "AutoFarm",
+   Callback = function(Value)
+      _G.auto = Value
+      if Value then
+         Rayfield:Notify({
+            Title = "Auto Farm",
+            Content = "Auto farming started!",
+            Duration = 3
+         })
+         spawn(function()
+            _G.damageAmount = _G.damageAmount or 5
+            _G.attackDelay = _G.attackDelay or 0.01
+            while _G.auto do
+               local currentPlayers = {}
+               for _, player in pairs(game:GetService("Players"):GetPlayers()) do
+                  currentPlayers[player.Name] = true
+               end
+               
+               local charactersFolder = workspace:FindFirstChild("Characters")
+               if charactersFolder then
+                  for _, model in pairs(charactersFolder:GetChildren()) do
+                     if model:IsA("Model") and not currentPlayers[model.Name] then
+                        local args = {
+                           "EMMFOSS__!ZCNSJNXCSDWQSANBX",
+                           "Main_Damger_OC_R",
+                           {
+                              model,
+                              {
+                                 D = _G.damageAmount,
+                                 F = game:GetService("Players").LocalPlayer.Character
+                              }
+                           }
+                        }
+                        game:GetService("ReplicatedStorage").ALLREMBINDS.Pls_Dont_Hack_Plssssssssss:FireServer(unpack(args))
+                     end
+                  end
+               end
+               
+               local args = {
+                  "EMMFOSS__!ZCNSJNXCSDWQSANBX",
+                  "ChangeProptyOfSmtHSHHH__",
+                  {
+                     game:GetService("Players").LocalPlayer,
+                     "GImmeTHeBLodd",
+                     true,
+                     {
+                        A = true
+                     }
+                  }
+               }
+               game:GetService("ReplicatedStorage"):WaitForChild("ALLREMBINDS"):WaitForChild("Pls_Dont_Hack_Plssssssssss"):FireServer(unpack(args))
+               
+               wait(_G.attackDelay)
+            end
+         end)
+      else
+         Rayfield:Notify({
+            Title = "Auto Farm",
+            Content = "Auto farming stopped!",
+            Duration = 3
+         })
+      end
+   end
+})
+
+MainTab:CreateSlider({
+   Name = "Damage Amount",
+   Range = {1, 1000},
+   Increment = 1,
+   CurrentValue = 5,
+   Flag = "DamageAmount",
+   Callback = function(Value)
+      _G.damageAmount = Value
+   end
+})
+
+MainTab:CreateSlider({
+   Name = "Attack Speed",
+   Range = {0.001, 1},
+   Increment = 0.001,
+   CurrentValue = 0.01,
+   Suffix = "s",
+   Flag = "AttackSpeed",
+   Callback = function(Value)
+      _G.attackDelay = Value
+   end
+})
+
+MainTab:CreateSection("Quick Actions")
+
+MainTab:CreateButton({
+   Name = "Kill All NPCs",
+   Callback = function()
+      local charactersFolder = workspace.Characters
+      local playerNames = {}
+      for _, player in pairs(game:GetService("Players"):GetPlayers()) do
+         playerNames[player.Name] = true
+      end
+      
+      if charactersFolder then
+         for _, model in pairs(charactersFolder:GetChildren()) do
+            if model:IsA("Model") and not playerNames[model.Name] then
+               local args = {
+                  "EMMFOSS__!ZCNSJNXCSDWQSANBX",
+                  "Main_Damger_OC_R",
+                  {
+                     model,
+                     {
+                        D = 9999,
+                        F = game:GetService("Players").LocalPlayer.Character
+                     }
+                  }
+               }
+               game:GetService("ReplicatedStorage").ALLREMBINDS.Pls_Dont_Hack_Plssssssssss:FireServer(unpack(args))
+            end
+         end
+      end
+      Rayfield:Notify({
+         Title = "Quick Action",
+         Content = "Killed all NPCs!",
+         Duration = 3
+      })
+   end
+})
+
+MainTab:CreateButton({
+   Name = "Get Blood Once",
+   Callback = function()
+      local args = {
+         "EMMFOSS__!ZCNSJNXCSDWQSANBX",
+         "ChangeProptyOfSmtHSHHH__",
+         {
+            game:GetService("Players").LocalPlayer,
+            "GImmeTHeBLodd",
+            true,
+            {
+               A = true
+            }
+         }
+      }
+      game:GetService("ReplicatedStorage"):WaitForChild("ALLREMBINDS"):WaitForChild("Pls_Dont_Hack_Plssssssssss"):FireServer(unpack(args))
+      Rayfield:Notify({
+         Title = "Blood",
+         Content = "Blood acquired!",
+         Duration = 3
+      })
+   end
+})
+
+SettingsTab:CreateSection("UI Controls")
+
+SettingsTab:CreateButton({
+   Name = "Unload UI",
+   Callback = function()
+      Window:Destroy()
+   end
+})
+
+SettingsTab:CreateButton({
+   Name = "Destroy All GUI",
+   Callback = function()
+      Rayfield:Destroy()
+   end
+})
+
+SettingsTab:CreateLabel({
+   Name = "Information",
+   Value = "."
+})
+
+Rayfield:Notify({
+   Title = "UI Loaded",
+   Content = "Auto Farm UI has been successfully loaded!",
+   Duration = 5
+})
